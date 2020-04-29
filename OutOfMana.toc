@@ -1,0 +1,7 @@
+## Interface: 80300
+## Title: I am out of mana!
+## SavedVariablesPerCharacter: WarningsEnabledOOM
+## SavedVariablesPerCharacter: LevelOfManaToWarnOOM
+## SavedVariablesPerCharacter: LevelOfManaIsOkOOM
+## SavedVariablesPerCharacter: IsWarningWasActivatedOOM
+OutOfMana.lua
