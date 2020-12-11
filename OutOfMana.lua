@@ -20,10 +20,11 @@ ConfigFrame:SetScript("OnEvent", function(self, event, arg1)
         local CurrentMana = UnitPower("player")
         if IsWarningWasActivatedOOM == false then
           if (MaxMana/100)*LevelOfManaToWarnOOM >= CurrentMana then
-            partyMembers = GetNumGroupMembers()
+            local inParty = UnitInParty("player")
             local ct = "PARTY";
-            if partyMembers > 5 then
-              ct= "RAID";
+            local inRaid = UnitInRaid("player")
+            if inRaid then
+              ct = "RAID";
             end
             SendChatMessage("My mana is low!",ct);
             DoEmote("oom","none")
@@ -41,10 +42,11 @@ ConfigFrame:SetScript("OnEvent", function(self, event, arg1)
           local MaxMana = UnitPowerMax("player")
           local CurrentMana = UnitPower("player")
           if (MaxMana/100)*LevelOfManaIsOkOOM <= CurrentMana then
-            partyMembers = GetNumGroupMembers()
+            local inParty = UnitInParty("player")
             local ct = "PARTY";
-            if partyMembers > 5 then
-              ct= "RAID";
+            local inRaid = UnitInRaid("player")
+            if inRaid then
+              ct = "RAID";
             end
             SendChatMessage("My mana is ok now",ct);
             DoEmote("ready","none")
