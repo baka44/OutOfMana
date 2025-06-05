@@ -1,72 +1,85 @@
 local ConfigFrame = CreateFrame("Frame")
+
 ConfigFrame:RegisterEvent("ADDON_LOADED")
-ConfigFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
-ConfigFrame:RegisterEvent("UNIT_AURA")
+ConfigFrame:RegisterEvent("UNIT_POWER_UPDATE")
+ConfigFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+ConfigFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+
+local function InitDefaults()
+    if WarningsEnabledOOM == nil then
+        WarningsEnabledOOM = true
+        LevelOfManaToWarnOOM = 10
+        LevelOfManaIsOkOOM = 85
+        IsWarningWasActivatedOOM = false
+    end
+end
+
+local function ShouldWarn()
+    if IsInGroup() or IsInRaid() or IsInInstance() then
+        local _, instanceType = IsInInstance()
+        return instanceType == "party" or instanceType == "raid" or instanceType == "pvp" or instanceType == "arena"
+    end
+    return false
+end
+
+local function GetChatType()
+    local _, instanceType = IsInInstance()
+    if instanceType == "pvp" or instanceType == "arena" then
+        return "INSTANCE_CHAT"
+    elseif IsInRaid() then
+        return "RAID"
+    elseif IsInGroup() then
+        return "PARTY"
+    end
+    return nil
+end
+
+-- Обробка зміни мани
+local function HandleManaChange()
+    if not WarningsEnabledOOM or not ShouldWarn() then return end
+
+    local powerType = select(2, UnitPowerType("player"))
+    if powerType ~= "MANA" then return end
+
+    local maxMana = UnitPowerMax("player", 0)
+    if maxMana == 0 then return end
+
+    local currentMana = UnitPower("player", 0)
+    local percent = (currentMana / maxMana) * 100
+    local chatType = GetChatType()
+
+    if not IsWarningWasActivatedOOM and percent <= LevelOfManaToWarnOOM then
+        if chatType then
+            SendChatMessage("My mana is low!", chatType)
+            DoEmote("oom", "none")
+            IsWarningWasActivatedOOM = true
+        end
+    elseif IsWarningWasActivatedOOM and percent >= LevelOfManaIsOkOOM then
+        if chatType then
+            SendChatMessage("My mana is ok now", chatType)
+            DoEmote("ready", "none")
+            IsWarningWasActivatedOOM = false
+        end
+    end
+end
 
 ConfigFrame:SetScript("OnEvent", function(self, event, arg1)
-    if event == "ADDON_LOADED" then
-        if LevelOfManaToWarnOOM == nil then
-          WarningsEnabledOOM = true -- Enable/Disable chat messages
-          LevelOfManaToWarnOOM = 10 -- How many percent of mana is low?
-          LevelOfManaIsOkOOM = 85 -- How many percent of mana is ok after restoration mana
-          IsWarningWasActivatedOOM = false --  Default false. If warning was activated - become true until mana level >= LevelOfManaIsOkOOM
-        end
-    elseif event == "UNIT_SPELLCAST_SENT" then
-      powerType, powerTypeString = UnitPowerType("player")
-      if powerTypeString == "MANA" then
-      inParty = IsInGroup()
-      if WarningsEnabledOOM == true and inParty then
-        local MaxMana = UnitPowerMax("player")
-        local CurrentMana = UnitPower("player")
-        if IsWarningWasActivatedOOM == false then
-          if (MaxMana/100)*LevelOfManaToWarnOOM >= CurrentMana then
-            local inParty = UnitInParty("player")
-            local ct = "PARTY";
-            local inRaid = UnitInRaid("player")
-            if inRaid then
-              ct = "RAID";
-            end
-            SendChatMessage("My mana is low!",ct);
-            DoEmote("oom","none")
-            IsWarningWasActivatedOOM = true
-          end
-        end
-      end
+    if event == "ADDON_LOADED" and arg1 == "OutOfMana" then
+        InitDefaults()
+    elseif event == "UNIT_POWER_UPDATE" and arg1 == "player" then
+        HandleManaChange()
+    elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+        IsWarningWasActivatedOOM = false
     end
-    elseif event == "UNIT_AURA" then
-      powerType, powerTypeString = UnitPowerType("player")
-      if powerTypeString == "MANA" then
-      inParty = IsInGroup()
-      if WarningsEnabledOOM == true and inParty then
-        if IsWarningWasActivatedOOM == true then
-          local MaxMana = UnitPowerMax("player")
-          local CurrentMana = UnitPower("player")
-          if (MaxMana/100)*LevelOfManaIsOkOOM <= CurrentMana then
-            local inParty = UnitInParty("player")
-            local ct = "PARTY";
-            local inRaid = UnitInRaid("player")
-            if inRaid then
-              ct = "RAID";
-            end
-            SendChatMessage("My mana is ok now",ct);
-            DoEmote("ready","none")
-            IsWarningWasActivatedOOM = false
-          end
-        end
-      end
-    end
-  end
 end)
 
 SLASH_OUTOFMANA1 = "/om"
 function SlashCmdList.OUTOFMANA(msg)
-    if WarningsEnabledOOM == true then
-     print("Warnings about your mana level is |cFFFF0000disabled|r.")
-     print("To enable it type |cffffcc00/om|r.")
-     WarningsEnabledOOM = false
-   elseif WarningsEnabledOOM == false then
-     print("Warnings about your mana level is |cFF00FF00enabled|r.")
-     print("To disable it type |cffffcc00/om|r.")
-     WarningsEnabledOOM = true
+    if WarningsEnabledOOM then
+        print("|cFFFF0000[OOM]|r Warnings disabled.")
+        WarningsEnabledOOM = false
+    else
+        print("|cFF00FF00[OOM]|r Warnings enabled.")
+        WarningsEnabledOOM = true
     end
 end
