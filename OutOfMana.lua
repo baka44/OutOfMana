@@ -15,26 +15,19 @@ local function InitDefaults()
 end
 
 local function ShouldWarn()
-    if IsInGroup() or IsInRaid() or IsInInstance() then
-        local _, instanceType = IsInInstance()
-        return instanceType == "party" or instanceType == "raid" or instanceType == "pvp" or instanceType == "arena"
-    end
-    return false
+    local inInstance, instanceType = IsInInstance()
+    if not inInstance then return false end
+
+    return instanceType == "party" or instanceType == "raid" or instanceType == "pvp" or instanceType == "arena"
 end
 
-local function GetChatType()
-    local _, instanceType = IsInInstance()
-    if instanceType == "pvp" or instanceType == "arena" then
-        return "INSTANCE_CHAT"
-    elseif IsInRaid() then
-        return "RAID"
-    elseif IsInGroup() then
-        return "PARTY"
+local function Warn(message, emote)
+    SendChatMessage(message, "SAY")
+    if emote then
+        DoEmote(emote, "none")
     end
-    return nil
 end
 
--- Обробка зміни мани
 local function HandleManaChange()
     if not WarningsEnabledOOM or not ShouldWarn() then return end
 
@@ -46,20 +39,13 @@ local function HandleManaChange()
 
     local currentMana = UnitPower("player", 0)
     local percent = (currentMana / maxMana) * 100
-    local chatType = GetChatType()
 
     if not IsWarningWasActivatedOOM and percent <= LevelOfManaToWarnOOM then
-        if chatType then
-            SendChatMessage("My mana is low!", chatType)
-            DoEmote("oom", "none")
-            IsWarningWasActivatedOOM = true
-        end
+        Warn("My mana is low!", "oom")
+        IsWarningWasActivatedOOM = true
     elseif IsWarningWasActivatedOOM and percent >= LevelOfManaIsOkOOM then
-        if chatType then
-            SendChatMessage("My mana is ok now", chatType)
-            DoEmote("ready", "none")
-            IsWarningWasActivatedOOM = false
-        end
+        Warn("My mana is ok now", "ready")
+        IsWarningWasActivatedOOM = false
     end
 end
 
